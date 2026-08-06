@@ -1,6 +1,9 @@
 import type { ToolSelection } from "../../shared/src/index";
 import { getTool, requiredInputKeys, tools } from "../../tool-registry/src/index";
 
+export { createGeminiResultExplainer } from "./explainer";
+export type { ResultExplanation } from "./explainer";
+
 export type AiRouter = (message: string) => Promise<ToolSelection>;
 
 export type AiCore = {
