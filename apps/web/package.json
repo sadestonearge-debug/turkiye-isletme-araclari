@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@tia/ai-core": "*",
     "@tia/tool-registry": "*",
     "next": "^16.2.0",
     "react": "^19.1.0",
