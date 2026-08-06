@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import {
   formatNumber,
   formatValue,
@@ -25,6 +25,11 @@ type Scenario = {
   delta?: number;
   deltaKey: string;
   current: boolean;
+};
+
+type AiExplanation = {
+  summary: string;
+  caution: string;
 };
 
 function isPercentageKey(key: string): boolean {
@@ -95,11 +100,37 @@ function scenarioHeading(toolId: string): { kicker: string; title: string } {
 export function CalculatorForm({ tool }: { tool: ToolPageDefinition }) {
   const [state, setState] = useState<ResultState>({ status: "idle" });
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
+  const [aiExplanation, setAiExplanation] = useState<AiExplanation | null>(null);
+  const requestSequence = useRef(0);
+
+  async function requestAiExplanation(
+    sequence: number,
+    inputs: Record<string, number | undefined>,
+    result: Record<string, unknown>,
+  ) {
+    try {
+      const response = await fetch("/api/explain-result", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ toolId: tool.id, inputs, result }),
+      });
+      const data = await response.json();
+      if (requestSequence.current !== sequence) return;
+      if (response.ok && data.ok && data.available && data.source === "gemini") {
+        setAiExplanation(data.explanation as AiExplanation);
+      }
+    } catch {
+      // AI explanation is optional. Deterministic results remain fully usable.
+    }
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const sequence = requestSequence.current + 1;
+    requestSequence.current = sequence;
     setState({ status: "loading" });
     setScenarios([]);
+    setAiExplanation(null);
 
     const formData = new FormData(event.currentTarget);
     const values = Object.fromEntries(
@@ -111,13 +142,16 @@ export function CalculatorForm({ tool }: { tool: ToolPageDefinition }) {
 
     try {
       const result = await calculate(tool.id, values);
+      if (requestSequence.current !== sequence) return;
       setState({ status: "success", result, inputs: values });
+      void requestAiExplanation(sequence, values, result);
 
       const requests = getScenarioRequests(tool.id, values);
       if (requests.length > 0) {
         const calculated = await Promise.all(
           requests.map(async (request) => ({ request, result: await calculate(request.toolId, request.values) })),
         );
+        if (requestSequence.current !== sequence) return;
         const currentItem = calculated.find(({ request }) => request.current);
         const currentDetail = currentItem ? Number(currentItem.result[currentItem.request.detailKey] ?? currentItem.request.values[currentItem.request.detailKey]) : undefined;
 
@@ -137,7 +171,9 @@ export function CalculatorForm({ tool }: { tool: ToolPageDefinition }) {
         }));
       }
     } catch {
-      setState({ status: "error", message: "Hesaplama şu anda tamamlanamadı. Girdiğiniz değerleri kontrol edip tekrar deneyin." });
+      if (requestSequence.current === sequence) {
+        setState({ status: "error", message: "Hesaplama şu anda tamamlanamadı. Girdiğiniz değerleri kontrol edip tekrar deneyin." });
+      }
     }
   }
 
@@ -187,6 +223,15 @@ export function CalculatorForm({ tool }: { tool: ToolPageDefinition }) {
               </div>
             ))}
           </div>
+
+          {aiExplanation && (
+            <aside className="ai-explanation" aria-label="Gemini AI yorumu">
+              <span className="decision-kicker">AI yorumu · Gemini</span>
+              <strong>{aiExplanation.summary}</strong>
+              <p>{aiExplanation.caution}</p>
+              <small>AI, doğrulanmış hesap sonucunu açıklar; hesaplamayı değiştirmez.</small>
+            </aside>
+          )}
 
           {scenarios.length > 0 && (
             <div className="scenario-block">
