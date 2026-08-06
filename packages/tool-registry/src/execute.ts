@@ -42,10 +42,21 @@ export function executeTool(toolId: string, candidate: Record<string, unknown>):
       result = calculateBreakEvenRevenue({ fixedCosts: v.fixedCosts!, contributionMarginPercent: v.contributionMarginPercent! });
       break;
     case "portion-cost":
-      result = calculatePortionCost({ ingredientCost: v.ingredientCost!, wastePercent: v.wastePercent, packagingCost: v.packagingCost, extraCost: v.extraCost });
+      result = calculatePortionCost({
+        ingredientCost: v.ingredientCost!,
+        ...(v.wastePercent !== undefined ? { wastePercent: v.wastePercent } : {}),
+        ...(v.packagingCost !== undefined ? { packagingCost: v.packagingCost } : {}),
+        ...(v.extraCost !== undefined ? { extraCost: v.extraCost } : {}),
+      });
       break;
     case "marketplace-net-profit":
-      result = calculateMarketplaceNetProfit({ salePrice: v.salePrice!, productCost: v.productCost!, commissionPercent: v.commissionPercent!, shippingCost: v.shippingCost, adCost: v.adCost });
+      result = calculateMarketplaceNetProfit({
+        salePrice: v.salePrice!,
+        productCost: v.productCost!,
+        commissionPercent: v.commissionPercent!,
+        ...(v.shippingCost !== undefined ? { shippingCost: v.shippingCost } : {}),
+        ...(v.adCost !== undefined ? { adCost: v.adCost } : {}),
+      });
       break;
     case "machine-payback":
       result = calculateMachinePayback({ investmentCost: v.investmentCost!, monthlyNetContribution: v.monthlyNetContribution! });
