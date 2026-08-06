@@ -2,6 +2,13 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import {
+  formatNumber,
+  formatValue,
+  getDecisionCopy,
+  getScenarioRequests,
+  nextTools,
+} from "../lib/decision-support";
 import type { ToolPageDefinition } from "../lib/tools";
 
 type ResultState =
@@ -13,118 +20,15 @@ type ResultState =
 type Scenario = {
   label: string;
   value: string;
-  detail: string;
-  margin: number;
-  delta: number;
+  detail?: string;
+  detailNumeric?: number;
+  delta?: number;
+  current: boolean;
 };
 
-const nextTools: Record<string, { slug: string; title: string; detail: string; question: string }> = {
-  "profit-margin": {
-    slug: "iskonto-sonrasi-kar-hesaplama",
-    title: "İskonto sonrası kârı kontrol et",
-    question: "İndirim yapmayı düşünüyor musunuz?",
-    detail: "Bu fiyat üzerinden kampanya yaptığınızda marjınızın ne kadar değişeceğini görün.",
-  },
-  "target-margin-sale-price": {
-    slug: "kar-marji-hesaplama",
-    title: "Gerçek kâr marjını kontrol et",
-    question: "Bulduğunuz fiyat hedefinizi karşılıyor mu?",
-    detail: "Satış fiyatının maliyetinize göre oluşturduğu gerçek marjı doğrulayın.",
-  },
-  "discount-profit": {
-    slug: "kar-marji-hesaplama",
-    title: "Normal satış marjını karşılaştır",
-    question: "İndirim öncesi durumu görmek ister misiniz?",
-    detail: "Liste fiyatınızla gerçek kâr marjınızı hesaplayıp indirimli sonuçla karşılaştırın.",
-  },
-  "commission-sale-price": {
-    slug: "pazaryeri-net-kar-hesaplama",
-    title: "Pazaryeri net kârını hesapla",
-    question: "Komisyon dışında başka giderleriniz de var mı?",
-    detail: "Ürün, kargo ve reklam maliyetlerini de ekleyerek gerçek net sonucu görün.",
-  },
-  "break-even-revenue": {
-    slug: "makine-amortisman-hesaplama",
-    title: "Yatırım geri dönüşünü hesapla",
-    question: "Yeni bir ekipman yatırımı planlıyor musunuz?",
-    detail: "Yatırımın aylık net katkıyla kaç ayda kendini ödeyeceğini karşılaştırın.",
-  },
-  "portion-cost": {
-    slug: "satis-fiyati-hesaplama",
-    title: "Porsiyona satış fiyatı belirle",
-    question: "Bu porsiyonu kaça satmanız gerektiğini biliyor musunuz?",
-    detail: "Bulduğunuz maliyetten hedef marjınıza uygun satış fiyatını oluşturun.",
-  },
-  "marketplace-net-profit": {
-    slug: "komisyon-dahil-satis-fiyati-hesaplama",
-    title: "Komisyon dahil satış fiyatını bul",
-    question: "Net kazanç hedefinizi korumak ister misiniz?",
-    detail: "Kesintilerden sonra hedeflediğiniz net tutarı bırakacak satış fiyatını hesaplayın.",
-  },
-  "machine-payback": {
-    slug: "basa-bas-ciro-hesaplama",
-    title: "Başa baş cironuzu hesapla",
-    question: "Yatırımı işletmenizin genel giderleriyle birlikte görmek ister misiniz?",
-    detail: "Aylık sabit giderlerinizi karşılamak için gereken minimum ciroyu hesaplayın.",
-  },
-};
-
-function formatNumber(value: number): string {
-  return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 }).format(value);
-}
-
-function formatValue(key: string, value: unknown): string {
-  if (typeof value !== "number") return String(value);
-  const isPercent = key.toLowerCase().includes("percent") || key.toLowerCase().includes("margin") || key.toLowerCase().includes("rate");
-  const isMonths = key.toLowerCase().includes("months");
-  if (isMonths) return `${formatNumber(value)} ay`;
-  if (isPercent) return `%${formatNumber(value)}`;
-  return `${formatNumber(value)} TL`;
-}
-
-function formatDelta(value: number): string {
-  if (Math.abs(value) < 0.005) return "Mevcut";
-  return `${value > 0 ? "+" : ""}${formatNumber(value)} puan`;
-}
-
-function getDecisionCopy(toolId: string, result: Record<string, unknown>): { title: string; body: string; tone: "positive" | "neutral" | "warning" } {
-  if (toolId === "profit-margin") {
-    const profit = Number(result.unitProfit);
-    const margin = Number(result.marginPercent);
-    if (Number.isFinite(profit) && profit < 0) {
-      return {
-        title: "Bu fiyat maliyetinizi karşılamıyor",
-        body: `Birim sonuç ${formatValue("unitProfit", profit)} ve marj ${formatValue("marginPercent", margin)}. Satış fiyatını veya maliyet yapınızı yeniden değerlendirmeniz gerekir.`,
-        tone: "warning",
-      };
-    }
-    if (Number.isFinite(profit) && profit === 0) {
-      return {
-        title: "Başa baş noktasındasınız",
-        body: "Bu fiyat doğrudan birim kâr üretmiyor. Vergi, komisyon, kargo veya diğer giderler varsa gerçek sonuç negatife dönebilir.",
-        tone: "neutral",
-      };
-    }
-    return {
-      title: "Kârlı satış",
-      body: `Birim kârınız ${formatValue("unitProfit", profit)}. Mevcut satış fiyatı maliyetinizin üzerindedir; kâr marjınız ${formatValue("marginPercent", margin)}. Marjın yeterliliği sektörünüze ve diğer giderlerinize bağlıdır.`,
-      tone: "positive",
-    };
-  }
-
-  if (toolId === "marketplace-net-profit") {
-    const profit = Number(result.netProfit);
-    const margin = Number(result.netMarginPercent);
-    return profit < 0
-      ? { title: "Bu satış senaryosu zarar üretiyor", body: `Komisyon ve diğer giderlerden sonra net sonuç ${formatValue("netProfit", profit)}. Fiyatı veya maliyetleri yeniden değerlendirin.`, tone: "warning" }
-      : { title: "Satış sonrası net kâr pozitif", body: `Hesaplanan net kâr ${formatValue("netProfit", profit)}, net marj ise ${formatValue("netMarginPercent", margin)}. İade ve vergi gibi dahil olmayan giderleri ayrıca kontrol edin.`, tone: "positive" };
-  }
-
-  return {
-    title: "Hesaplama tamamlandı",
-    body: "Sonucu tek başına değil, işletmenizin diğer giderleri ve hedefleriyle birlikte değerlendirin. Aşağıdaki ilgili araç bir sonraki kontrol için kullanılabilir.",
-    tone: "neutral",
-  };
+function formatDelta(value: number | undefined, percentageLike: boolean): string | null {
+  if (value === undefined || Math.abs(value) < 0.005) return null;
+  return `${value > 0 ? "+" : ""}${formatNumber(value)}${percentageLike ? " puan" : ""}`;
 }
 
 async function calculate(toolId: string, values: Record<string, number | undefined>) {
@@ -139,13 +43,13 @@ async function calculate(toolId: string, values: Record<string, number | undefin
 }
 
 function ScenarioChart({ scenarios }: { scenarios: Scenario[] }) {
-  if (scenarios.length !== 3) return null;
-  const margins = scenarios.map((scenario) => scenario.margin);
-  const min = Math.min(...margins);
-  const max = Math.max(...margins);
+  if (scenarios.length !== 3 || scenarios.some((scenario) => scenario.detailNumeric === undefined)) return null;
+  const values = scenarios.map((scenario) => scenario.detailNumeric as number);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
   const spread = Math.max(max - min, 1);
   const xs = [28, 150, 272];
-  const ys = margins.map((margin) => 88 - ((margin - min) / spread) * 58);
+  const ys = values.map((value) => 88 - ((value - min) / spread) * 58);
   const points = xs.map((x, index) => `${x},${ys[index]}`).join(" ");
 
   return (
@@ -156,13 +60,27 @@ function ScenarioChart({ scenarios }: { scenarios: Scenario[] }) {
         <polyline points={points} className="chart-line" />
         {scenarios.map((scenario, index) => (
           <g key={scenario.label}>
-            <circle cx={xs[index]} cy={ys[index]} r="4.5" className={index === 1 ? "chart-point chart-point-current" : "chart-point"} />
+            <circle cx={xs[index]} cy={ys[index]} r="4.5" className={scenario.current ? "chart-point chart-point-current" : "chart-point"} />
             <text x={xs[index]} y="110" textAnchor="middle" className="chart-label">{index === 0 ? "−%10" : index === 1 ? "Mevcut" : "+%10"}</text>
           </g>
         ))}
       </svg>
     </div>
   );
+}
+
+function scenarioHeading(toolId: string): { kicker: string; title: string } {
+  switch (toolId) {
+    case "profit-margin": return { kicker: "Fiyat senaryosu", title: "Fiyat değişirse marj ne olur?" };
+    case "target-margin-sale-price": return { kicker: "Hedef senaryosu", title: "Marj hedefi değişirse fiyat ne olur?" };
+    case "discount-profit": return { kicker: "İndirim senaryosu", title: "İndirim oranı değişirse sonuç ne olur?" };
+    case "commission-sale-price": return { kicker: "Komisyon senaryosu", title: "Komisyon değişirse gereken fiyat ne olur?" };
+    case "break-even-revenue": return { kicker: "Katkı marjı senaryosu", title: "Katkı marjı değişirse başa baş ciro ne olur?" };
+    case "portion-cost": return { kicker: "Maliyet senaryosu", title: "Malzeme maliyeti değişirse porsiyon maliyeti ne olur?" };
+    case "marketplace-net-profit": return { kicker: "Fiyat senaryosu", title: "Satış fiyatı değişirse net sonuç ne olur?" };
+    case "machine-payback": return { kicker: "Katkı senaryosu", title: "Aylık katkı değişirse geri ödeme süresi ne olur?" };
+    default: return { kicker: "Senaryo", title: "Farklı durumda sonuç ne olur?" };
+  }
 }
 
 export function CalculatorForm({ tool }: { tool: ToolPageDefinition }) {
@@ -186,39 +104,27 @@ export function CalculatorForm({ tool }: { tool: ToolPageDefinition }) {
       const result = await calculate(tool.id, values);
       setState({ status: "success", result, inputs: values });
 
-      if (tool.id === "profit-margin" && typeof values.cost === "number" && typeof values.salePrice === "number") {
-        const lowerPrice = Number((values.salePrice * 0.9).toFixed(2));
-        const higherPrice = Number((values.salePrice * 1.1).toFixed(2));
-        const [lower, higher] = await Promise.all([
-          calculate("profit-margin", { cost: values.cost, salePrice: lowerPrice }),
-          calculate("profit-margin", { cost: values.cost, salePrice: higherPrice }),
-        ]);
-        const currentMargin = Number(result.marginPercent);
-        const lowerMargin = Number(lower.marginPercent);
-        const higherMargin = Number(higher.marginPercent);
-        setScenarios([
-          {
-            label: "%10 daha düşük fiyat",
-            value: formatValue("salePrice", lowerPrice),
-            detail: `Marj ${formatValue("marginPercent", lowerMargin)}`,
-            margin: lowerMargin,
-            delta: lowerMargin - currentMargin,
-          },
-          {
-            label: "Mevcut fiyat",
-            value: formatValue("salePrice", values.salePrice),
-            detail: `Marj ${formatValue("marginPercent", currentMargin)}`,
-            margin: currentMargin,
-            delta: 0,
-          },
-          {
-            label: "%10 daha yüksek fiyat",
-            value: formatValue("salePrice", higherPrice),
-            detail: `Marj ${formatValue("marginPercent", higherMargin)}`,
-            margin: higherMargin,
-            delta: higherMargin - currentMargin,
-          },
-        ]);
+      const requests = getScenarioRequests(tool.id, values);
+      if (requests.length > 0) {
+        const calculated = await Promise.all(
+          requests.map(async (request) => ({ request, result: await calculate(request.toolId, request.values) })),
+        );
+        const currentItem = calculated.find(({ request }) => request.current);
+        const currentDetail = currentItem ? Number(currentItem.result[currentItem.request.detailKey] ?? currentItem.request.values[currentItem.request.detailKey]) : undefined;
+
+        setScenarios(calculated.map(({ request, result: scenarioResult }) => {
+          const primaryRaw = scenarioResult[request.primaryKey] ?? request.values[request.primaryKey];
+          const detailRaw = scenarioResult[request.detailKey] ?? request.values[request.detailKey];
+          const detailNumeric = typeof detailRaw === "number" ? detailRaw : undefined;
+          return {
+            label: request.label,
+            value: formatValue(request.primaryKey, primaryRaw),
+            detail: request.detailKey !== request.primaryKey ? `${tool.resultLabels[request.detailKey] ?? "Sonuç"}: ${formatValue(request.detailKey, detailRaw)}` : undefined,
+            detailNumeric,
+            delta: detailNumeric !== undefined && currentDetail !== undefined ? detailNumeric - currentDetail : undefined,
+            current: request.current,
+          };
+        }));
       }
     } catch {
       setState({ status: "error", message: "Hesaplama şu anda tamamlanamadı. Girdiğiniz değerleri kontrol edip tekrar deneyin." });
@@ -227,6 +133,8 @@ export function CalculatorForm({ tool }: { tool: ToolPageDefinition }) {
 
   const nextTool = nextTools[tool.id];
   const decision = state.status === "success" ? getDecisionCopy(tool.id, state.result) : null;
+  const heading = scenarioHeading(tool.id);
+  const percentageDelta = tool.id === "profit-margin" || tool.id === "discount-profit" || tool.id === "marketplace-net-profit";
 
   return (
     <div className="tool-panel">
@@ -275,21 +183,24 @@ export function CalculatorForm({ tool }: { tool: ToolPageDefinition }) {
             <div className="scenario-block">
               <div className="result-heading">
                 <div>
-                  <span className="decision-kicker">Fiyat senaryosu</span>
-                  <h3>Fiyat değişirse marj ne olur?</h3>
+                  <span className="decision-kicker">{heading.kicker}</span>
+                  <h3>{heading.title}</h3>
                 </div>
               </div>
               <div className="scenario-grid">
-                {scenarios.map((scenario) => (
-                  <div className="scenario-card" key={scenario.label}>
-                    <span>{scenario.label}</span>
-                    <strong>{scenario.value}</strong>
-                    <small>{scenario.detail}</small>
-                    <em className={scenario.delta > 0 ? "delta-positive" : scenario.delta < 0 ? "delta-negative" : "delta-neutral"}>{formatDelta(scenario.delta)}</em>
-                  </div>
-                ))}
+                {scenarios.map((scenario) => {
+                  const delta = formatDelta(scenario.delta, percentageDelta);
+                  return (
+                    <div className={`scenario-card${scenario.current ? " scenario-current" : ""}`} key={scenario.label}>
+                      <span>{scenario.label}</span>
+                      <strong>{scenario.value}</strong>
+                      {scenario.detail && <small>{scenario.detail}</small>}
+                      {scenario.current ? <em className="delta-neutral">Mevcut</em> : delta && <em className={scenario.delta && scenario.delta > 0 ? "delta-positive" : "delta-negative"}>{delta}</em>}
+                    </div>
+                  );
+                })}
               </div>
-              <ScenarioChart scenarios={scenarios} />
+              {tool.id === "profit-margin" && <ScenarioChart scenarios={scenarios} />}
             </div>
           )}
 
