@@ -239,21 +239,29 @@ button:disabled { cursor: not-allowed; opacity: .65; }
 }
 .scenario-card span, .scenario-card small { display: block; color: var(--muted); font-size: 11px; }
 .scenario-card strong { display: block; margin: 7px 0 3px; font-size: 18px; letter-spacing: -0.02em; }
+.scenario-card em { display: block; margin-top: 7px; font-size: 11px; font-style: normal; font-weight: 700; }
+.delta-positive { color: var(--positive); }
+.delta-negative { color: var(--warning); }
+.delta-neutral { color: var(--muted); }
+.scenario-chart { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.scenario-chart svg { display: block; width: 100%; height: 122px; overflow: visible; }
+.chart-axis { stroke: #e5e7eb; stroke-width: 1; }
+.chart-line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.chart-point { fill: #fff; stroke: var(--accent); stroke-width: 2.5; }
+.chart-point-current { fill: var(--accent); }
+.chart-label { fill: var(--muted); font-size: 10px; }
 .next-tool {
   padding: 18px;
   border: 1px solid var(--border);
   border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+  display: block;
   background: #fff;
-  transition: border-color .15s ease, transform .15s ease;
+  transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
 }
-.next-tool:hover { border-color: #cbd5e1; transform: translateY(-1px); }
+.next-tool:hover { border-color: #cbd5e1; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(17,24,39,.04); }
 .next-tool strong { display: block; margin-top: 4px; font-size: 17px; }
 .next-tool p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
-.next-tool > span { color: var(--muted); font-size: 22px; }
+.next-tool-action { display: inline-block; margin-top: 12px; color: var(--accent); font-size: 13px; font-weight: 800; }
 
 .content-block { margin-top: 30px; border-top: 1px solid var(--border); padding-top: 26px; }
 .content-block h2 { font-size: 24px; letter-spacing: -0.03em; }
@@ -283,5 +291,5 @@ button:disabled { cursor: not-allowed; opacity: .65; }
   .button { width: 100%; }
   .metric-grid, .scenario-grid { grid-template-columns: 1fr; }
   .metric-card { min-height: 88px; }
-  .next-tool { align-items: flex-start; }
+  .scenario-chart { display: none; }
 }
