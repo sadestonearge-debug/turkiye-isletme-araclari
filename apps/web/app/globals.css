@@ -22,6 +22,7 @@ body {
 a { color: inherit; text-decoration: none; }
 button, input { font: inherit; }
 button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .65; }
 
 .shell {
   width: min(1120px, calc(100% - 32px));
@@ -83,6 +84,9 @@ button { cursor: pointer; }
   color: #fff;
   font-weight: 700;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .button:hover { background: var(--accent-strong); }
 
@@ -135,7 +139,10 @@ button { cursor: pointer; }
   border-radius: 12px;
   background: var(--surface);
 }
+.result p { margin: 0 0 14px; }
+.result p:last-child { margin-bottom: 0; }
 .result strong { display: block; font-size: 24px; letter-spacing: -0.03em; }
+.result .button { margin-top: 14px; }
 .content-block { margin-top: 34px; border-top: 1px solid var(--border); padding-top: 28px; }
 .content-block h2 { font-size: 24px; letter-spacing: -0.03em; }
 .content-block p, .content-block li { color: #444; }
@@ -155,4 +162,5 @@ button { cursor: pointer; }
   .hero { padding: 42px 0 28px; }
   .section { padding-bottom: 52px; }
   .tool-panel { padding: 18px; box-shadow: none; }
+  .button { width: 100%; }
 }
