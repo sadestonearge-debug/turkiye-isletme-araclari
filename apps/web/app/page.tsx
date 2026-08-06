@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ToolFinder } from "../components/tool-finder";
 import { toolPages } from "../lib/tools";
 
 const categories = [
@@ -18,17 +19,7 @@ export default function HomePage() {
           <p>
             Fiyat, maliyet, kârlılık ve yatırım kararlarını sade hesaplama araçlarıyla birkaç saniyede kontrol et.
           </p>
-          <div className="finder" aria-label="Araç bulucu önizlemesi">
-            <input
-              className="input"
-              aria-label="Ne hesaplamak istiyorsunuz?"
-              placeholder="Örn. Ürünümü kaça satmalıyım?"
-              disabled
-            />
-            <button className="button" type="button" disabled>
-              Yakında AI ile bul
-            </button>
-          </div>
+          <ToolFinder />
         </div>
       </section>
 
