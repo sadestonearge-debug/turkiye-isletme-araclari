@@ -1,0 +1,33 @@
+.scenario-current {
+  box-shadow: inset 0 0 0 1px #d1d5db;
+}
+
+.ai-explanation {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.ai-explanation strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 16px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+}
+
+.ai-explanation p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ai-explanation small {
+  display: block;
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: #8a8a8a;
+  font-size: 11px;
+}
