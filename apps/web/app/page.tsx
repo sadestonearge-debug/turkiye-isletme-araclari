@@ -10,7 +10,7 @@ export default function HomePage() {
           <span className="eyebrow">Ücretsiz işletme araçları</span>
           <h1>İşletmeni tahminle değil, hesapla yönet.</h1>
           <p>
-            Fiyat, maliyet, kârlılık ve yatırım kararlarını sade hesaplama araçlarıyla birkaç saniyede kontrol et.
+            Fiyat, maliyet, kârlılık ve yatırım kararlarını hesapla; sonucu senaryolarla karşılaştır ve bir sonraki adımı gör.
           </p>
           <ToolFinder />
         </div>
@@ -21,12 +21,11 @@ export default function HomePage() {
           <div className="section-heading-row">
             <div>
               <h2 className="section-title">İşletme araçları</h2>
-              <p className="section-copy">İhtiyacın olan hesabı seç, değerlerini gir ve sonucu hemen gör.</p>
+              <p className="section-copy">İhtiyacın olan hesabı seç, değerlerini gir ve sonucu karar desteğiyle birlikte gör.</p>
             </div>
             <span className="tool-count">{toolPages.length} araç</span>
           </div>
-
-          <div className="grid tool-grid">
+          <div className="grid">
             {toolPages.map((tool) => (
               <Link className="card tool-card" key={tool.id} href={`/araclar/${tool.slug}`}>
                 <span className="badge">{tool.categoryLabel}</span>
