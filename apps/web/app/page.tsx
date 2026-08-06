@@ -2,51 +2,39 @@ import Link from "next/link";
 import { ToolFinder } from "../components/tool-finder";
 import { toolPages } from "../lib/tools";
 
-const categories = [
-  ["Fiyatlandırma", "Satış fiyatı, marj, iskonto ve komisyon hesapları"],
-  ["Finans", "Başa baş noktası ve yatırım geri dönüş hesapları"],
-  ["Kafe & Restoran", "Porsiyon ve operasyon maliyeti araçları"],
-  ["E-Ticaret", "Pazaryeri satışında gerçek net kâr hesapları"],
-] as const;
-
 export default function HomePage() {
   return (
     <>
       <section className="hero">
-        <div className="shell">
-          <span className="badge">Ücretsiz işletme araçları</span>
+        <div className="shell hero-shell">
+          <span className="eyebrow">Ücretsiz işletme araçları</span>
           <h1>İşletmeni tahminle değil, hesapla yönet.</h1>
           <p>
-            Fiyat, maliyet, kârlılık ve yatırım kararlarını sade hesaplama araçlarıyla birkaç saniyede kontrol et.
+            Fiyat, maliyet, kârlılık ve yatırım kararlarını hesapla; sonucu senaryolarla karşılaştır ve bir sonraki adımı gör.
           </p>
           <ToolFinder />
         </div>
       </section>
 
-      <section className="section" id="araclar">
+      <section className="section section-tools" id="araclar">
         <div className="shell">
-          <h2 className="section-title">Öne çıkan araçlar</h2>
+          <div className="section-heading-row">
+            <div>
+              <h2 className="section-title">İşletme araçları</h2>
+              <p className="section-copy">İhtiyacın olan hesabı seç, değerlerini gir ve sonucu karar desteğiyle birlikte gör.</p>
+            </div>
+            <span className="tool-count">{toolPages.length} araç</span>
+          </div>
           <div className="grid">
             {toolPages.map((tool) => (
-              <Link className="card" key={tool.id} href={`/araclar/${tool.slug}`}>
+              <Link className="card tool-card" key={tool.id} href={`/araclar/${tool.slug}`}>
                 <span className="badge">{tool.categoryLabel}</span>
-                <h3>{tool.shortTitle}</h3>
+                <div className="card-title-row">
+                  <h3>{tool.shortTitle}</h3>
+                  <span className="card-arrow" aria-hidden="true">→</span>
+                </div>
                 <p>{tool.description}</p>
               </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="section" id="kategoriler">
-        <div className="shell">
-          <h2 className="section-title">İşletme ihtiyacına göre</h2>
-          <div className="grid">
-            {categories.map(([title, description]) => (
-              <article className="card" key={title}>
-                <h3>{title}</h3>
-                <p>{description}</p>
-              </article>
             ))}
           </div>
         </div>

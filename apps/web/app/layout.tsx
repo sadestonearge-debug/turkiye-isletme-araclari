@@ -23,7 +23,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <Link className="brand" href="/">İşletme Araçları</Link>
             <nav className="nav" aria-label="Ana menü">
               <Link href="/#araclar">Araçlar</Link>
-              <Link href="/#kategoriler">Kategoriler</Link>
             </nav>
           </div>
         </header>
