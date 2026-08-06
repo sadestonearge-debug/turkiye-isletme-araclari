@@ -23,12 +23,21 @@ type Scenario = {
   detail?: string;
   detailNumeric?: number;
   delta?: number;
+  deltaKey: string;
   current: boolean;
 };
 
-function formatDelta(value: number | undefined, percentageLike: boolean): string | null {
+function isPercentageKey(key: string): boolean {
+  const lower = key.toLowerCase();
+  return lower.includes("percent") || lower.includes("margin") || lower.includes("rate");
+}
+
+function formatDelta(value: number | undefined, key: string): string | null {
   if (value === undefined || Math.abs(value) < 0.005) return null;
-  return `${value > 0 ? "+" : ""}${formatNumber(value)}${percentageLike ? " puan" : ""}`;
+  const sign = value > 0 ? "+" : "";
+  if (isPercentageKey(key)) return `${sign}${formatNumber(value)} puan`;
+  if (key.toLowerCase().includes("months")) return `${sign}${formatNumber(value)} ay`;
+  return `${sign}${formatNumber(value)} TL`;
 }
 
 async function calculate(toolId: string, values: Record<string, number | undefined>) {
@@ -122,6 +131,7 @@ export function CalculatorForm({ tool }: { tool: ToolPageDefinition }) {
             detail: request.detailKey !== request.primaryKey ? `${tool.resultLabels[request.detailKey] ?? "Sonuç"}: ${formatValue(request.detailKey, detailRaw)}` : undefined,
             detailNumeric,
             delta: detailNumeric !== undefined && currentDetail !== undefined ? detailNumeric - currentDetail : undefined,
+            deltaKey: request.detailKey,
             current: request.current,
           };
         }));
@@ -134,7 +144,6 @@ export function CalculatorForm({ tool }: { tool: ToolPageDefinition }) {
   const nextTool = nextTools[tool.id];
   const decision = state.status === "success" ? getDecisionCopy(tool.id, state.result) : null;
   const heading = scenarioHeading(tool.id);
-  const percentageDelta = tool.id === "profit-margin" || tool.id === "discount-profit" || tool.id === "marketplace-net-profit";
 
   return (
     <div className="tool-panel">
@@ -189,13 +198,17 @@ export function CalculatorForm({ tool }: { tool: ToolPageDefinition }) {
               </div>
               <div className="scenario-grid">
                 {scenarios.map((scenario) => {
-                  const delta = formatDelta(scenario.delta, percentageDelta);
+                  const delta = formatDelta(scenario.delta, scenario.deltaKey);
+                  const directional = isPercentageKey(scenario.deltaKey);
+                  const deltaClass = directional
+                    ? scenario.delta && scenario.delta > 0 ? "delta-positive" : "delta-negative"
+                    : "delta-neutral";
                   return (
                     <div className={`scenario-card${scenario.current ? " scenario-current" : ""}`} key={scenario.label}>
                       <span>{scenario.label}</span>
                       <strong>{scenario.value}</strong>
                       {scenario.detail && <small>{scenario.detail}</small>}
-                      {scenario.current ? <em className="delta-neutral">Mevcut</em> : delta && <em className={scenario.delta && scenario.delta > 0 ? "delta-positive" : "delta-negative"}>{delta}</em>}
+                      {scenario.current ? <em className="delta-neutral">Mevcut</em> : delta && <em className={deltaClass}>{delta}</em>}
                     </div>
                   );
                 })}
