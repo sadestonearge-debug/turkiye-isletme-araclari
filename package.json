@@ -4,10 +4,13 @@
   "private": true,
   "packageManager": "npm@10",
   "workspaces": [
+    "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "npm run dev --workspace=@tia/web",
+    "build": "npm run build --workspace=@tia/web",
+    "typecheck": "tsc -p tsconfig.json --noEmit && npm run typecheck --workspace=@tia/web",
     "test": "vitest run",
     "test:watch": "vitest"
   },

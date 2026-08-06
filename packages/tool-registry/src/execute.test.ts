@@ -22,6 +22,12 @@ describe("tool execution", () => {
     if (!result.ok) expect(result.code).toBe("invalid_input");
   });
 
+  it("converts calculator range failures into invalid input", () => {
+    const result = executeTool("profit-margin", { cost: 0, salePrice: 100 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("invalid_input");
+  });
+
   it("rejects unknown tools", () => {
     expect(executeTool("does-not-exist", {})).toEqual({ ok: false, code: "unknown_tool" });
   });
