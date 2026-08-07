@@ -2,27 +2,51 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { parseSingleNumber } from "../lib/conversation";
 import { buildPrefillQuery } from "../lib/prefill";
 
+type MissingInput = { key: string; label: string; suffix: string | null };
 type Match = {
   slug: string;
   title: string;
   description: string;
   confidence: number;
   extractedInputs: Record<string, number>;
-  missingInputs: string[];
+  missingInputs: MissingInput[];
 };
 
 export function ToolFinder() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [match, setMatch] = useState<Match | null | undefined>(undefined);
+  const [replyError, setReplyError] = useState<string | null>(null);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (message.trim().length < 1) return;
+
+    if (match && match.missingInputs.length > 0) {
+      const current = match.missingInputs[0];
+      const value = parseSingleNumber(message);
+      if (value === null) {
+        setReplyError(`${current.label} için 0 veya daha büyük geçerli bir sayı yazın.`);
+        return;
+      }
+
+      setMatch({
+        ...match,
+        extractedInputs: { ...match.extractedInputs, [current.key]: value },
+        missingInputs: match.missingInputs.slice(1),
+      });
+      setMessage("");
+      setReplyError(null);
+      return;
+    }
+
     if (message.trim().length < 3) return;
     setLoading(true);
     setMatch(undefined);
+    setReplyError(null);
 
     try {
       const response = await fetch("/api/find-tool", {
@@ -32,6 +56,7 @@ export function ToolFinder() {
       });
       const data = await response.json();
       setMatch(response.ok && data.ok ? data.match : null);
+      setMessage("");
     } catch {
       setMatch(null);
     } finally {
@@ -42,22 +67,31 @@ export function ToolFinder() {
   const extractedCount = match ? Object.keys(match.extractedInputs).length : 0;
   const query = match ? buildPrefillQuery(match.extractedInputs) : "";
   const href = match ? `/araclar/${match.slug}${query ? `?${query}` : ""}` : "#";
+  const currentMissing = match?.missingInputs[0];
+
+  function resetConversation() {
+    setMessage("");
+    setMatch(undefined);
+    setReplyError(null);
+  }
 
   return (
     <div>
       <form className="finder" onSubmit={onSubmit}>
         <input
           className="input"
-          aria-label="Ne hesaplamak istiyorsunuz?"
+          aria-label={currentMissing ? currentMissing.label : "Ne hesaplamak istiyorsunuz?"}
           maxLength={500}
           onChange={(event) => setMessage(event.target.value)}
-          placeholder="Örn. Maliyetim 100 TL, 160 TL'ye satıyorum. Marjım ne?"
+          placeholder={currentMissing ? `${currentMissing.label}${currentMissing.suffix ? ` (${currentMissing.suffix})` : ""}` : "Örn. Maliyetim 100 TL, 160 TL'ye satıyorum. Marjım ne?"}
           value={message}
         />
-        <button className="button" disabled={loading || message.trim().length < 3} type="submit">
-          {loading ? "Analiz ediliyor…" : "AI ile analiz et"}
+        <button className="button" disabled={loading || message.trim().length < 1} type="submit">
+          {loading ? "Analiz ediliyor…" : currentMissing ? "Yanıtla" : "AI ile analiz et"}
         </button>
       </form>
+
+      {replyError && <p className="finder-error" role="alert">{replyError}</p>}
 
       {match === null && (
         <div className="result" role="status">
@@ -70,13 +104,21 @@ export function ToolFinder() {
           <span>Size uygun araç</span>
           <strong>{match.title}</strong>
           <p>{match.description}</p>
-          {extractedCount > 0 && (
-            <p>AI mesajınızdan {extractedCount} sayısal alan çıkardı. Aracı açtığınızda bu değerler önceden doldurulacak.</p>
+
+          {currentMissing ? (
+            <div className="conversation-prompt">
+              <span>Bir bilgi daha gerekiyor</span>
+              <b>{currentMissing.label}{currentMissing.suffix ? ` (${currentMissing.suffix})` : ""} nedir?</b>
+              <small>AI yalnız eksik bilgiyi istiyor; hesaplama henüz yapılmayacak.</small>
+            </div>
+          ) : (
+            <>
+              {extractedCount > 0 && <p>Gerekli bilgiler tamamlandı. {extractedCount} alan hesaplayıcıya taşınacak.</p>}
+              <Link className="button" href={href}>{extractedCount > 0 ? "Aracı doldur" : "Aracı aç"}</Link>
+            </>
           )}
-          {match.missingInputs.length > 0 && (
-            <p>Eksik alanları hesaplama sayfasında siz tamamlayacaksınız.</p>
-          )}
-          <Link className="button" href={href}>{extractedCount > 0 ? "Aracı doldur" : "Aracı aç"}</Link>
+
+          <button className="finder-reset" type="button" onClick={resetConversation}>Baştan başla</button>
         </div>
       )}
     </div>
