@@ -33,8 +33,6 @@ export async function POST(request: Request) {
   const routingMessage = buildContextualRoutingMessage(message, previousContexts);
   let selection = shortcut ?? await createRouter().selectTool(routingMessage);
 
-  // A provider may validly return toolId:null for terse phrases. In that case,
-  // retry the raw user wording through the deterministic router before giving up.
   if (!selection.toolId) {
     selection = await createRuleBasedAiCore().selectTool(message);
   }
@@ -63,6 +61,8 @@ export async function POST(request: Request) {
       confidence: selection.confidence,
       extractedInputs,
       missingInputs,
+      inputMeta: page.inputs.map((input) => ({ key: input.key, label: input.label, suffix: input.suffix ?? null })),
+      resultLabels: page.resultLabels,
     },
   });
 }
