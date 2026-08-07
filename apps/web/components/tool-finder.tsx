@@ -2,8 +2,16 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { buildPrefillQuery } from "../lib/prefill";
 
-type Match = { slug: string; title: string; description: string; confidence: number };
+type Match = {
+  slug: string;
+  title: string;
+  description: string;
+  confidence: number;
+  extractedInputs: Record<string, number>;
+  missingInputs: string[];
+};
 
 export function ToolFinder() {
   const [message, setMessage] = useState("");
@@ -31,6 +39,10 @@ export function ToolFinder() {
     }
   }
 
+  const extractedCount = match ? Object.keys(match.extractedInputs).length : 0;
+  const query = match ? buildPrefillQuery(match.extractedInputs) : "";
+  const href = match ? `/araclar/${match.slug}${query ? `?${query}` : ""}` : "#";
+
   return (
     <div>
       <form className="finder" onSubmit={onSubmit}>
@@ -39,11 +51,11 @@ export function ToolFinder() {
           aria-label="Ne hesaplamak istiyorsunuz?"
           maxLength={500}
           onChange={(event) => setMessage(event.target.value)}
-          placeholder="Örn. Ürünümü kaça satmalıyım?"
+          placeholder="Örn. Maliyetim 100 TL, 160 TL'ye satıyorum. Marjım ne?"
           value={message}
         />
         <button className="button" disabled={loading || message.trim().length < 3} type="submit">
-          {loading ? "Bulunuyor…" : "Aracı bul"}
+          {loading ? "Analiz ediliyor…" : "AI ile analiz et"}
         </button>
       </form>
 
@@ -58,7 +70,13 @@ export function ToolFinder() {
           <span>Size uygun araç</span>
           <strong>{match.title}</strong>
           <p>{match.description}</p>
-          <Link className="button" href={`/araclar/${match.slug}`}>Aracı aç</Link>
+          {extractedCount > 0 && (
+            <p>AI mesajınızdan {extractedCount} sayısal alan çıkardı. Aracı açtığınızda bu değerler önceden doldurulacak.</p>
+          )}
+          {match.missingInputs.length > 0 && (
+            <p>Eksik alanları hesaplama sayfasında siz tamamlayacaksınız.</p>
+          )}
+          <Link className="button" href={href}>{extractedCount > 0 ? "Aracı doldur" : "Aracı aç"}</Link>
         </div>
       )}
     </div>
