@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { CalculatorForm } from "../../../components/calculator-form";
+import { PrefillBridge } from "../../../components/prefill-bridge";
 import { getFaqs, REVIEWED_AT } from "../../../lib/seo-content";
 import { getToolPageBySlug, toolPages } from "../../../lib/tools";
 
@@ -84,6 +86,9 @@ export default async function ToolPage({ params }: PageProps) {
           <p className="lede">{tool.description}</p>
         </div>
 
+        <Suspense fallback={null}>
+          <PrefillBridge fields={tool.inputs} />
+        </Suspense>
         <CalculatorForm tool={tool} />
 
         <section className="content-block" aria-labelledby="calculation-info-heading">
