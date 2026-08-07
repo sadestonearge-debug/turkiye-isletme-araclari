@@ -68,7 +68,7 @@ export function ToolFinder() {
   const [contextHistory, setContextHistory] = useState<AssistantSessionContext[]>([]);
   const [calculation, setCalculation] = useState<CalculationState>({ status: "idle" });
   const [chat, setChat] = useState<ChatLine[]>([]);
-  const [nextChatId, setNextChatId] = useState(1);
+  const nextChatIdRef = useRef(1);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -80,8 +80,9 @@ export function ToolFinder() {
   }, [chat, calculation.status]);
 
   function appendChat(role: ChatLine["role"], text: string) {
-    setChat((current) => [...current, { id: nextChatId, role, text }]);
-    setNextChatId((value) => value + 1);
+    const id = nextChatIdRef.current;
+    nextChatIdRef.current += 1;
+    setChat((current) => [...current, { id, role, text }]);
   }
 
   async function calculateInline(activeMatch: Match) {
@@ -217,6 +218,7 @@ export function ToolFinder() {
     setReplyError(null);
     setCalculation({ status: "idle" });
     setChat([]);
+    nextChatIdRef.current = 1;
   }
 
   return (
