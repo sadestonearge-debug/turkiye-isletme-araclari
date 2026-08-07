@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   clearAssistantSession,
   getAssistantSessionHistory,
@@ -68,15 +68,16 @@ export function ToolFinder() {
   const [contextHistory, setContextHistory] = useState<AssistantSessionContext[]>([]);
   const [calculation, setCalculation] = useState<CalculationState>({ status: "idle" });
   const [chat, setChat] = useState<ChatLine[]>([]);
-  const [nextChatId, setNextChatId] = useState(1);
+  const chatIdRef = useRef(1);
 
   useEffect(() => {
     setContextHistory(getAssistantSessionHistory());
   }, []);
 
   function appendChat(role: ChatLine["role"], text: string) {
-    setChat((current) => [...current, { id: nextChatId, role, text }]);
-    setNextChatId((value) => value + 1);
+    const id = chatIdRef.current;
+    chatIdRef.current += 1;
+    setChat((current) => [...current, { id, role, text }]);
   }
 
   async function calculateInline(activeMatch: Match) {
@@ -212,6 +213,7 @@ export function ToolFinder() {
     setReplyError(null);
     setCalculation({ status: "idle" });
     setChat([]);
+    chatIdRef.current = 1;
   }
 
   return (
