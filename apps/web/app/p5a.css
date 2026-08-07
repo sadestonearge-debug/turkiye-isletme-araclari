@@ -31,7 +31,8 @@
   padding: 11px 14px;
   border-radius: 13px;
 }
-.chat-line span {
+.chat-line span,
+.chat-assistant-label {
   display: block;
   margin-bottom: 3px;
   color: var(--muted);
@@ -53,6 +54,11 @@
 }
 
 .chat-composer { max-width: none; margin-top: 12px; }
+
+.chat-calculation-message {
+  width: min(92%, 760px);
+  justify-self: start;
+}
 
 .chat-calculation-card {
   width: 100%;
@@ -106,6 +112,38 @@
   font-size: 11px;
 }
 
+.chat-suggestions {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(22, 101, 52, .16);
+}
+.chat-suggestions > span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.chat-suggestions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chat-suggestions button {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 700;
+}
+.chat-suggestions button:hover {
+  border-color: #86efac;
+  background: #f7fff9;
+}
+
 .finder-reset {
   margin-top: 10px;
   border: 0;
@@ -120,5 +158,8 @@
   .chat-window { min-height: 220px; max-height: 70vh; padding: 12px; }
   .chat-line { max-width: 92%; }
   .chat-line-assistant { min-width: 0; }
+  .chat-calculation-message { width: 100%; }
   .chat-result-grid { grid-template-columns: 1fr; }
+  .chat-suggestions > div { flex-direction: column; }
+  .chat-suggestions button { width: 100%; }
 }
