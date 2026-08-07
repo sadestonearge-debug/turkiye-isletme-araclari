@@ -68,16 +68,20 @@ export function ToolFinder() {
   const [contextHistory, setContextHistory] = useState<AssistantSessionContext[]>([]);
   const [calculation, setCalculation] = useState<CalculationState>({ status: "idle" });
   const [chat, setChat] = useState<ChatLine[]>([]);
-  const chatIdRef = useRef(1);
+  const [nextChatId, setNextChatId] = useState(1);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setContextHistory(getAssistantSessionHistory());
   }, []);
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [chat, calculation.status]);
+
   function appendChat(role: ChatLine["role"], text: string) {
-    const id = chatIdRef.current;
-    chatIdRef.current += 1;
-    setChat((current) => [...current, { id, role, text }]);
+    setChat((current) => [...current, { id: nextChatId, role, text }]);
+    setNextChatId((value) => value + 1);
   }
 
   async function calculateInline(activeMatch: Match) {
@@ -213,7 +217,6 @@ export function ToolFinder() {
     setReplyError(null);
     setCalculation({ status: "idle" });
     setChat([]);
-    chatIdRef.current = 1;
   }
 
   return (
@@ -258,6 +261,7 @@ export function ToolFinder() {
         )}
 
         {calculation.status === "error" && <div className="finder-error" role="alert">{calculation.message}</div>}
+        <div ref={chatEndRef} aria-hidden="true" />
       </div>
 
       <form className="finder chat-composer" onSubmit={onSubmit}>
