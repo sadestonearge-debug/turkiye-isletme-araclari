@@ -58,6 +58,12 @@ const RESULT_SUFFIXES: Readonly<Record<string, string>> = {
   netMarginPercent: "%",
 };
 
+const PRIMARY_RESULT_KEYS: Readonly<Record<string, readonly string[]>> = {
+  "profit-margin": ["unitProfit", "marginPercent"],
+  "discount-profit": ["discountedPrice", "unitProfit", "marginPercent"],
+  "marketplace-net-profit": ["netProfit", "netMarginPercent"],
+};
+
 function formatNumber(value: number): string {
   return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 }).format(value);
 }
@@ -66,6 +72,16 @@ function formatMetric(key: string, value: unknown): string {
   if (typeof value !== "number" || !Number.isFinite(value)) return String(value ?? "-");
   const suffix = RESULT_SUFFIXES[key];
   return suffix === "%" ? `%${formatNumber(value)}` : suffix ? `${formatNumber(value)} ${suffix}` : formatNumber(value);
+}
+
+function primaryResultEntries(toolId: string, result: Record<string, unknown>) {
+  const preferred = PRIMARY_RESULT_KEYS[toolId] ?? [];
+  const entries = preferred
+    .filter((key) => result[key] !== undefined)
+    .slice(0, 2)
+    .map((key) => [key, result[key]] as const);
+
+  return entries.length > 0 ? entries : Object.entries(result).slice(0, 2);
 }
 
 export function ToolFinder() {
@@ -85,7 +101,7 @@ export function ToolFinder() {
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [chat, calculation.status]);
+  }, [chat, calculation.status, loading]);
 
   function nextChatId() {
     const id = nextChatIdRef.current;
@@ -238,6 +254,7 @@ export function ToolFinder() {
   const href = match ? `/araclar/${match.slug}${query ? `?${query}` : ""}` : "#";
   const currentMissing = match?.missingInputs[0];
   const latestCalculationId = [...chat].reverse().find((entry) => entry.kind === "calculation")?.id ?? null;
+  const isThinking = loading || calculation.status === "loading";
 
   function resetConversation() {
     clearAssistantSession();
@@ -252,93 +269,119 @@ export function ToolFinder() {
 
   return (
     <div id="assistant" className="chat-assistant">
-      <div className="chat-window" aria-live="polite">
-        {chat.length === 0 && (
-          <div className="chat-empty">
-            <strong>İşletme AI</strong>
-            <p>Hesabı doğal dille anlatın. Eksik bilgiyi sorarım ve doğrulanmış hesap motorunu burada çalıştırırım.</p>
-          </div>
-        )}
+      <div className="chat-shell">
+        <div className="chat-window" aria-live="polite">
+          {chat.length === 0 && (
+            <div className="chat-empty">
+              <strong>İşletme AI</strong>
+              <p>Hesabı doğal dille anlatın. Eksik bilgiyi sorarım ve doğrulanmış hesap motorunu burada çalıştırırım.</p>
+            </div>
+          )}
 
-        {chat.map((entry) => {
-          if (entry.kind === "message") {
+          {chat.map((entry) => {
+            if (entry.kind === "message") {
+              return (
+                <div className={`chat-line chat-line-${entry.role}`} key={entry.id}>
+                  <span>{entry.role === "user" ? "Siz" : "İşletme AI"}</span>
+                  <p>{entry.text}</p>
+                </div>
+              );
+            }
+
+            const suggestions = entry.id === latestCalculationId ? getChatSuggestions(entry.match.toolId) : [];
+            const primaryResults = primaryResultEntries(entry.match.toolId, entry.result);
+
             return (
-              <div className={`chat-line chat-line-${entry.role}`} key={entry.id}>
-                <span>{entry.role === "user" ? "Siz" : "İşletme AI"}</span>
-                <p>{entry.text}</p>
-              </div>
-            );
-          }
+              <div className="chat-calculation-message" key={entry.id}>
+                <span className="chat-assistant-label">İşletme AI</span>
+                <div className="chat-calculation-card">
+                  <div className="chat-calculation-heading">
+                    <span>✓ Hesaplandı</span>
+                    <strong>{entry.match.title}</strong>
+                  </div>
 
-          const suggestions = entry.id === latestCalculationId ? getChatSuggestions(entry.match.toolId) : [];
-          return (
-            <div className="chat-calculation-message" key={entry.id}>
-              <span className="chat-assistant-label">İşletme AI</span>
-              <div className="chat-calculation-card">
-                <div className="chat-calculation-heading">
-                  <span>Doğrulanmış hesap</span>
-                  <strong>{entry.match.title}</strong>
-                </div>
-                <div className="chat-used-inputs">
-                  {entry.match.inputMeta
-                    .filter((input) => entry.match.extractedInputs[input.key] !== undefined)
-                    .map((input) => (
-                      <span key={input.key}>{input.label}: <b>{formatNumber(entry.match.extractedInputs[input.key])}{input.suffix ? ` ${input.suffix}` : ""}</b></span>
+                  <div className="chat-primary-results">
+                    {primaryResults.map(([key, value]) => (
+                      <div key={key}>
+                        <span>{entry.match.resultLabels[key] ?? key}</span>
+                        <strong>{formatMetric(key, value)}</strong>
+                      </div>
                     ))}
-                </div>
-                <div className="chat-result-grid">
-                  {Object.entries(entry.result).map(([key, value]) => (
-                    <div key={key}>
-                      <span>{entry.match.resultLabels[key] ?? key}</span>
-                      <strong>{formatMetric(key, value)}</strong>
-                    </div>
-                  ))}
-                </div>
-                <small>Sonuç AI tarafından tahmin edilmedi; deterministik hesaplama motoru tarafından üretildi.</small>
+                  </div>
 
-                {suggestions.length > 0 && (
-                  <div className="chat-suggestions" aria-label="Sonraki hesap önerileri">
-                    <span>Devam etmek ister misiniz?</span>
-                    <div>
-                      {suggestions.map((suggestion) => (
-                        <button
-                          type="button"
-                          key={suggestion.message}
-                          disabled={loading || calculation.status === "loading"}
-                          onClick={() => void runSuggestion(suggestion.message)}
-                        >
-                          {suggestion.label}
-                        </button>
+                  <details className="chat-result-details">
+                    <summary>Detayı aç</summary>
+                    <div className="chat-used-inputs">
+                      {entry.match.inputMeta
+                        .filter((input) => entry.match.extractedInputs[input.key] !== undefined)
+                        .map((input) => (
+                          <span key={input.key}>{input.label}: <b>{formatNumber(entry.match.extractedInputs[input.key])}{input.suffix ? ` ${input.suffix}` : ""}</b></span>
+                        ))}
+                    </div>
+                    <div className="chat-result-grid">
+                      {Object.entries(entry.result).map(([key, value]) => (
+                        <div key={key}>
+                          <span>{entry.match.resultLabels[key] ?? key}</span>
+                          <strong>{formatMetric(key, value)}</strong>
+                        </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                    <small>Sonuç AI tarafından tahmin edilmedi; deterministik hesaplama motoru tarafından üretildi.</small>
+                  </details>
+
+                  {suggestions.length > 0 && (
+                    <div className="chat-suggestions" aria-label="Sonraki hesap önerileri">
+                      <span>Şimdi ne yapmak istersiniz?</span>
+                      <div>
+                        {suggestions.map((suggestion) => (
+                          <button
+                            type="button"
+                            key={suggestion.message}
+                            disabled={isThinking}
+                            onClick={() => void runSuggestion(suggestion.message)}
+                          >
+                            {suggestion.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
+            );
+          })}
+
+          {isThinking && (
+            <div className="chat-typing" role="status">
+              <span>İşletme AI yazıyor</span>
+              <i />
+              <i />
+              <i />
             </div>
-          );
-        })}
+          )}
 
-        {calculation.status === "error" && <div className="finder-error" role="alert">{calculation.message}</div>}
-        <div ref={chatEndRef} aria-hidden="true" />
+          {calculation.status === "error" && <div className="finder-error" role="alert">{calculation.message}</div>}
+          <div ref={chatEndRef} aria-hidden="true" />
+        </div>
+
+        <form className="finder chat-composer" onSubmit={onSubmit}>
+          <input
+            className="input"
+            aria-label={currentMissing ? currentMissing.label : latestContext ? "Devam sorunuzu yazın" : "Ne hesaplamak istiyorsunuz?"}
+            maxLength={500}
+            onChange={(event) => setMessage(event.target.value)}
+            placeholder={currentMissing
+              ? `${currentMissing.label}${currentMissing.suffix ? ` (${currentMissing.suffix})` : ""}`
+              : latestContext
+                ? "Örn. Şimdi %10 indirim yaparsam?"
+                : "Örn. Maliyetim 100 TL, 160 TL'ye satıyorum. Marjım ne?"}
+            value={message}
+          />
+          <button className="button" disabled={isThinking || message.trim().length < 1} type="submit">
+            {isThinking ? "Bekleyin…" : "Gönder"}
+          </button>
+        </form>
       </div>
-
-      <form className="finder chat-composer" onSubmit={onSubmit}>
-        <input
-          className="input"
-          aria-label={currentMissing ? currentMissing.label : latestContext ? "Devam sorunuzu yazın" : "Ne hesaplamak istiyorsunuz?"}
-          maxLength={500}
-          onChange={(event) => setMessage(event.target.value)}
-          placeholder={currentMissing
-            ? `${currentMissing.label}${currentMissing.suffix ? ` (${currentMissing.suffix})` : ""}`
-            : latestContext
-              ? "Örn. Şimdi %10 indirim yaparsam?"
-              : "Örn. Maliyetim 100 TL, 160 TL'ye satıyorum. Marjım ne?"}
-          value={message}
-        />
-        <button className="button" disabled={loading || calculation.status === "loading" || message.trim().length < 1} type="submit">
-          {loading || calculation.status === "loading" ? "Hesaplanıyor…" : "Gönder"}
-        </button>
-      </form>
 
       {replyError && <p className="finder-error" role="alert">{replyError}</p>}
 
