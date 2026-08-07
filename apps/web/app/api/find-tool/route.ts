@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createRuleBasedAiCore } from "@tia/ai-core";
 import { createProviderBackedAiCore } from "@tia/ai-core/provider";
 import { createGeminiRoutingProvider } from "@tia/ai-core/gemini";
+import { sanitizeExtractedInputs } from "../../../lib/prefill";
 import { toolPages } from "../../../lib/tools";
 
 function createRouter() {
@@ -39,6 +40,8 @@ export async function POST(request: Request) {
       title: page.title,
       description: page.description,
       confidence: selection.confidence,
+      extractedInputs: sanitizeExtractedInputs(page, selection.extractedInputs),
+      missingInputs: selection.missingInputs.filter((key) => page.inputs.some((input) => input.key === key)),
     },
   });
 }
