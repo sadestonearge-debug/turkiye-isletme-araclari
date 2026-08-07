@@ -19,6 +19,33 @@ describe("Gemini result explainer", () => {
     expect(fetchImpl).toHaveBeenCalledOnce();
   });
 
+  it("retries once without structured output when Gemini rejects the schema request", async () => {
+    const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      if (fetchImpl.mock.calls.length === 1) {
+        expect(body.generationConfig.responseFormat).toBeDefined();
+        return new Response(JSON.stringify({ error: { code: 400 } }), { status: 400 });
+      }
+
+      expect(body.generationConfig.responseFormat).toBeUndefined();
+      return new Response(
+        JSON.stringify({
+          candidates: [{
+            content: {
+              parts: [{ text: JSON.stringify({ summary: "Birim kâr 60 TL.", caution: "Diğer giderler dahil değildir." }) }],
+            },
+          }],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const explainer = createGeminiResultExplainer({ apiKey: "test-key", fetchImpl });
+    await expect(explainer.explain("profit-margin", { cost: 100 }, { unitProfit: 60 }))
+      .resolves.toEqual({ summary: "Birim kâr 60 TL.", caution: "Diğer giderler dahil değildir." });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
   it("fails closed when Gemini returns an invalid payload", async () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ candidates: [] }), { status: 200 }));
     const explainer = createGeminiResultExplainer({ apiKey: "test-key", fetchImpl });
