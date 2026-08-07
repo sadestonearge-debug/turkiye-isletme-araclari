@@ -14,8 +14,8 @@ const DEFAULT_MODEL = "gemini-3.1-flash-lite";
 const RESPONSE_SCHEMA = {
   type: "object",
   properties: {
-    summary: { type: "string", minLength: 1, maxLength: 280 },
-    caution: { type: "string", minLength: 1, maxLength: 220 },
+    summary: { type: "string", description: "Verified result in plain Turkish, concise and practical." },
+    caution: { type: "string", description: "One concise caution about excluded costs or assumptions." },
   },
   required: ["summary", "caution"],
   additionalProperties: false,
@@ -63,8 +63,12 @@ export function createGeminiResultExplainer(options: GeminiExplainerOptions) {
           contents: [{ parts: [{ text: buildPrompt(toolId, inputs, result) }] }],
           generationConfig: {
             temperature: 0.1,
-            responseMimeType: "application/json",
-            responseSchema: RESPONSE_SCHEMA,
+            responseFormat: {
+              text: {
+                mimeType: "application/json",
+                schema: RESPONSE_SCHEMA,
+              },
+            },
           },
         }),
       });
