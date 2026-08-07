@@ -3,9 +3,10 @@ import { getToolPageBySlug } from "./tools";
 import { mergeFollowUpValue, nextMissingInput, parseSingleNumber } from "./conversation";
 
 describe("conversational missing-input helpers", () => {
-  it("parses Turkish decimal and currency-like replies", () => {
+  it("parses Turkish decimal, dot decimal and currency-like replies", () => {
     expect(parseSingleNumber("100 TL")).toBe(100);
     expect(parseSingleNumber("12,5")).toBe(12.5);
+    expect(parseSingleNumber("12.5")).toBe(12.5);
     expect(parseSingleNumber("1.250 TL")).toBe(1250);
   });
 
