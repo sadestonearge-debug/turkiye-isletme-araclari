@@ -1,10 +1,17 @@
 import type { ToolPageDefinition } from "./tools";
 
 export function parseSingleNumber(message: string): number | null {
-  const normalized = message.replace(/\./g, "").replace(",", ".");
-  const match = normalized.match(/-?\d+(?:\.\d+)?/);
-  if (!match) return null;
-  const value = Number(match[0]);
+  const raw = message.match(/-?\d[\d.,]*/)?.[0];
+  if (!raw) return null;
+
+  let normalized = raw;
+  if (raw.includes(",")) {
+    normalized = raw.replace(/\./g, "").replace(",", ".");
+  } else if (/^\d{1,3}(?:\.\d{3})+$/.test(raw)) {
+    normalized = raw.replace(/\./g, "");
+  }
+
+  const value = Number(normalized);
   if (!Number.isFinite(value) || value < 0) return null;
   return value;
 }
