@@ -6,6 +6,13 @@
   background: #eff6ff;
 }
 
+.prefill-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .prefill-notice strong,
 .prefill-notice span {
   display: block;
@@ -19,4 +26,43 @@
   margin-top: 4px;
   color: #4b5563;
   font-size: 13px;
+}
+
+.prefill-clear {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.prefill-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prefill-list li {
+  padding: 9px 10px;
+  border: 1px solid #dbeafe;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .72);
+}
+
+.prefill-list li span {
+  margin: 0;
+  font-size: 11px;
+}
+
+.prefill-list li strong {
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .prefill-list { grid-template-columns: 1fr; }
 }
