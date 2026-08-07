@@ -14,8 +14,8 @@ const DEFAULT_MODEL = "gemini-3.1-flash-lite";
 const RESPONSE_SCHEMA = {
   type: "object",
   properties: {
-    summary: { type: "string", minLength: 1, maxLength: 280 },
-    caution: { type: "string", minLength: 1, maxLength: 220 },
+    summary: { type: "string", description: "Verified result in plain Turkish, concise and practical." },
+    caution: { type: "string", description: "One concise caution about excluded costs or assumptions." },
   },
   required: ["summary", "caution"],
   additionalProperties: false,
@@ -41,37 +41,69 @@ function buildPrompt(toolId: string, inputs: Record<string, unknown>, result: Re
     "Do not claim that a margin, price, payback period, or business metric is universally good/bad or an industry benchmark.",
     "Do not provide legal, tax, accounting, investment, credit, or professional financial advice.",
     "Explain the practical meaning in plain Turkish in at most two short sentences, then give one short caution about excluded costs or assumptions.",
+    "Return JSON only with exactly these string fields: summary and caution.",
     `Tool: ${toolId}`,
     `Verified inputs: ${JSON.stringify(inputs)}`,
     `Verified result: ${JSON.stringify(result)}`,
   ].join("\n\n");
 }
 
+function parseExplanation(payload: unknown): ResultExplanation {
+  const parsed = JSON.parse(extractResponseText(payload)) as ResultExplanation;
+  if (!parsed || typeof parsed.summary !== "string" || typeof parsed.caution !== "string") {
+    throw new Error("Gemini returned an invalid explanation shape");
+  }
+  const summary = parsed.summary.trim();
+  const caution = parsed.caution.trim();
+  if (!summary || !caution) throw new Error("Gemini returned an incomplete explanation");
+  return {
+    summary: summary.slice(0, 280),
+    caution: caution.slice(0, 220),
+  };
+}
+
 export function createGeminiResultExplainer(options: GeminiExplainerOptions) {
   if (!options.apiKey.trim()) throw new Error("GEMINI_API_KEY is required");
   const model = options.model?.trim() || DEFAULT_MODEL;
   const fetchImpl = options.fetchImpl ?? fetch;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+
+  async function request(prompt: string, structured: boolean): Promise<Response> {
+    return fetchImpl(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": options.apiKey },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: structured
+          ? {
+              temperature: 0.1,
+              responseFormat: {
+                text: {
+                  mimeType: "application/json",
+                  schema: RESPONSE_SCHEMA,
+                },
+              },
+            }
+          : { temperature: 0.1 },
+      }),
+    });
+  }
 
   return {
     name: "gemini",
     model,
     async explain(toolId: string, inputs: Record<string, unknown>, result: Record<string, unknown>): Promise<ResultExplanation> {
-      const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": options.apiKey },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: buildPrompt(toolId, inputs, result) }] }],
-          generationConfig: {
-            temperature: 0.1,
-            responseMimeType: "application/json",
-            responseSchema: RESPONSE_SCHEMA,
-          },
-        }),
-      });
+      const prompt = buildPrompt(toolId, inputs, result);
+      let response = await request(prompt, true);
+
+      // Gemini's structured-output request shape has changed across API revisions.
+      // If Google rejects only the schema request, retry once with plain JSON instructions.
+      if (response.status === 400) {
+        response = await request(prompt, false);
+      }
+
       if (!response.ok) throw new Error(`Gemini API request failed with status ${response.status}`);
-      const parsed = JSON.parse(extractResponseText(await response.json())) as ResultExplanation;
-      if (!parsed.summary?.trim() || !parsed.caution?.trim()) throw new Error("Gemini returned an incomplete explanation");
-      return parsed;
+      return parseExplanation(await response.json());
     },
   };
 }

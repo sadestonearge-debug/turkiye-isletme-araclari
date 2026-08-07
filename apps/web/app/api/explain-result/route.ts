@@ -7,6 +7,23 @@ function isNumericRecord(value: unknown): value is Record<string, number> {
   return entries.length <= 12 && entries.every(([key, item]) => key.length <= 64 && typeof item === "number" && Number.isFinite(item));
 }
 
+function classifyGeminiError(error: unknown): string {
+  if (!(error instanceof Error)) return "unknown_error";
+  const status = error.message.match(/status\s+(\d{3})/i)?.[1];
+  if (status) return `gemini_http_${status}`;
+  if (/no candidates|no content parts|no text payload|invalid response|incomplete explanation/i.test(error.message)) {
+    return "invalid_response";
+  }
+  return "gemini_request_failed";
+}
+
+function unavailable(reason: string) {
+  if (process.env.NODE_ENV === "development") {
+    return NextResponse.json({ ok: true, available: false, diagnostic: reason });
+  }
+  return NextResponse.json({ ok: true, available: false });
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json() as { toolId?: unknown; inputs?: unknown; result?: unknown };
@@ -15,12 +32,12 @@ export async function POST(request: Request) {
     }
 
     const apiKey = process.env.GEMINI_API_KEY?.trim();
-    if (!apiKey) return NextResponse.json({ ok: true, available: false });
+    if (!apiKey) return unavailable("missing_key");
 
     const explainer = createGeminiResultExplainer({ apiKey, model: process.env.GEMINI_MODEL });
     const explanation = await explainer.explain(body.toolId, body.inputs, body.result);
     return NextResponse.json({ ok: true, available: true, source: "gemini", explanation });
-  } catch {
-    return NextResponse.json({ ok: true, available: false });
+  } catch (error) {
+    return unavailable(classifyGeminiError(error));
   }
 }

@@ -102,8 +102,12 @@ export function createGeminiRoutingProvider(options: GeminiProviderOptions): Str
             contents: [{ parts: [{ text: buildRoutingPrompt(message) }] }],
             generationConfig: {
               temperature: 0,
-              responseMimeType: "application/json",
-              responseSchema: RESPONSE_SCHEMA,
+              responseFormat: {
+                text: {
+                  mimeType: "application/json",
+                  schema: RESPONSE_SCHEMA,
+                },
+              },
             },
           }),
         },
