@@ -21,14 +21,27 @@ export function sanitizePreviousContext(value: unknown): SafePreviousContext | n
   return { toolId: tool.id, toolTitle: tool.title, inputs };
 }
 
-export function buildContextualRoutingMessage(message: string, context: SafePreviousContext | null): string {
-  if (!context) return message;
+export function sanitizePreviousContexts(value: unknown): SafePreviousContext[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .slice(-3)
+    .map(sanitizePreviousContext)
+    .filter((context): context is SafePreviousContext => context !== null);
+}
+
+export function buildContextualRoutingMessage(message: string, contexts: SafePreviousContext[]): string {
+  if (contexts.length === 0) return message;
+  const history = contexts
+    .map((context, index) => `${index + 1}. ${context.toolId} (${context.toolTitle}) inputs=${JSON.stringify(context.inputs)}`)
+    .join("\n");
+
   return [
-    "The user is asking a follow-up after a previous verified calculator input set.",
-    `Previous tool: ${context.toolId} (${context.toolTitle})`,
-    `Previous verified user inputs: ${JSON.stringify(context.inputs)}`,
-    "You may reuse only these exact previous input values when they are semantically applicable to the newly selected tool.",
-    "Do not derive, calculate, or invent any new numeric value from the previous context.",
+    "The user is asking a follow-up after a short chain of verified calculator input sets.",
+    "Verified calculator history (oldest to newest):",
+    history,
+    "Prefer the newest semantically applicable exact value. Older values may be reused only when the newer contexts do not provide an applicable value.",
+    "You may reuse only exact numeric values shown in this history when they are semantically applicable to the newly selected tool.",
+    "Do not derive, calculate, combine, average, transform, or invent any new numeric value from the history.",
     "User follow-up:",
     message,
   ].join("\n\n");
