@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { clearAssistantSession, getAssistantSession, type AssistantSessionContext } from "../lib/assistant-session";
+import {
+  clearAssistantSession,
+  getAssistantSessionHistory,
+  type AssistantSessionContext,
+} from "../lib/assistant-session";
 import { parseSingleNumber } from "../lib/conversation";
 import { buildPrefillQuery } from "../lib/prefill";
 
@@ -22,10 +26,10 @@ export function ToolFinder() {
   const [loading, setLoading] = useState(false);
   const [match, setMatch] = useState<Match | null | undefined>(undefined);
   const [replyError, setReplyError] = useState<string | null>(null);
-  const [previousContext, setPreviousContext] = useState<AssistantSessionContext | null>(null);
+  const [contextHistory, setContextHistory] = useState<AssistantSessionContext[]>([]);
 
   useEffect(() => {
-    setPreviousContext(getAssistantSession());
+    setContextHistory(getAssistantSessionHistory());
   }, []);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -59,7 +63,7 @@ export function ToolFinder() {
       const response = await fetch("/api/find-tool", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message, previousContext }),
+        body: JSON.stringify({ message, previousContexts: contextHistory }),
       });
       const data = await response.json();
       setMatch(response.ok && data.ok ? data.match : null);
@@ -71,6 +75,7 @@ export function ToolFinder() {
     }
   }
 
+  const latestContext = contextHistory.at(-1) ?? null;
   const extractedCount = match ? Object.keys(match.extractedInputs).length : 0;
   const query = match ? buildPrefillQuery(match.extractedInputs) : "";
   const href = match ? `/araclar/${match.slug}${query ? `?${query}` : ""}` : "#";
@@ -78,7 +83,7 @@ export function ToolFinder() {
 
   function resetConversation() {
     clearAssistantSession();
-    setPreviousContext(null);
+    setContextHistory([]);
     setMessage("");
     setMatch(undefined);
     setReplyError(null);
@@ -86,19 +91,26 @@ export function ToolFinder() {
 
   function clearPreviousContext() {
     clearAssistantSession();
-    setPreviousContext(null);
+    setContextHistory([]);
     setMatch(undefined);
     setReplyError(null);
   }
 
   return (
     <div id="assistant">
-      {previousContext && (
+      {latestContext && (
         <div className="assistant-session-context" role="status">
           <div>
-            <span>Önceki hesap bağlamı</span>
-            <strong>{previousContext.toolTitle}</strong>
-            <small>Devam sorunuzu yazın; yalnız önceki doğrulanmış girdiler bağlam olarak kullanılacak.</small>
+            <span>Geçici hesap zinciri · {contextHistory.length}/3</span>
+            <strong>{latestContext.toolTitle}</strong>
+            <small>Son {contextHistory.length} doğrulanmış hesap girdisi bağlamda. Yeni sayı türetilmez; yalnız uygun eski değerler yeniden kullanılabilir.</small>
+            {contextHistory.length > 1 && (
+              <div className="assistant-context-chain" aria-label="Geçici hesap zinciri">
+                {contextHistory.map((context, index) => (
+                  <span key={`${context.toolId}-${index}`}>{index + 1}. {context.toolTitle}</span>
+                ))}
+              </div>
+            )}
           </div>
           <button type="button" onClick={clearPreviousContext}>Bağlamı temizle</button>
         </div>
@@ -107,18 +119,18 @@ export function ToolFinder() {
       <form className="finder" onSubmit={onSubmit}>
         <input
           className="input"
-          aria-label={currentMissing ? currentMissing.label : previousContext ? "Devam sorunuzu yazın" : "Ne hesaplamak istiyorsunuz?"}
+          aria-label={currentMissing ? currentMissing.label : latestContext ? "Devam sorunuzu yazın" : "Ne hesaplamak istiyorsunuz?"}
           maxLength={500}
           onChange={(event) => setMessage(event.target.value)}
           placeholder={currentMissing
             ? `${currentMissing.label}${currentMissing.suffix ? ` (${currentMissing.suffix})` : ""}`
-            : previousContext
-              ? "Örn. Şimdi %10 indirim yaparsam ne olur?"
+            : latestContext
+              ? "Örn. Şimdi komisyon %20 olursa net kârım ne olur?"
               : "Örn. Maliyetim 100 TL, 160 TL'ye satıyorum. Marjım ne?"}
           value={message}
         />
         <button className="button" disabled={loading || message.trim().length < 1} type="submit">
-          {loading ? "Analiz ediliyor…" : currentMissing ? "Yanıtla" : previousContext ? "Devam et" : "AI ile analiz et"}
+          {loading ? "Analiz ediliyor…" : currentMissing ? "Yanıtla" : latestContext ? "Devam et" : "AI ile analiz et"}
         </button>
       </form>
 
@@ -132,7 +144,7 @@ export function ToolFinder() {
 
       {match && (
         <div className="result" role="status">
-          <span>{previousContext ? "Devam sorusu için uygun araç" : "Size uygun araç"}</span>
+          <span>{latestContext ? "Devam sorusu için uygun araç" : "Size uygun araç"}</span>
           <strong>{match.title}</strong>
           <p>{match.description}</p>
 

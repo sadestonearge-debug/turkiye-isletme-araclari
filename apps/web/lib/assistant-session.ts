@@ -4,22 +4,30 @@ export type AssistantSessionContext = {
   inputs: Record<string, number>;
 };
 
-let currentContext: AssistantSessionContext | null = null;
+const MAX_HISTORY = 3;
+let history: AssistantSessionContext[] = [];
 
-export function setAssistantSession(context: AssistantSessionContext): void {
-  currentContext = {
+function cloneContext(context: AssistantSessionContext): AssistantSessionContext {
+  return {
     toolId: context.toolId,
     toolTitle: context.toolTitle,
     inputs: { ...context.inputs },
   };
 }
 
+export function setAssistantSession(context: AssistantSessionContext): void {
+  history = [...history, cloneContext(context)].slice(-MAX_HISTORY);
+}
+
 export function getAssistantSession(): AssistantSessionContext | null {
-  return currentContext
-    ? { ...currentContext, inputs: { ...currentContext.inputs } }
-    : null;
+  const current = history.at(-1);
+  return current ? cloneContext(current) : null;
+}
+
+export function getAssistantSessionHistory(): AssistantSessionContext[] {
+  return history.map(cloneContext);
 }
 
 export function clearAssistantSession(): void {
-  currentContext = null;
+  history = [];
 }
