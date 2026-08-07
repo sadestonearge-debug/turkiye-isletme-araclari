@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useRef, useState } from "react";
+import { setAssistantSession } from "../lib/assistant-session";
 import {
   formatNumber,
   formatValue,
@@ -144,6 +145,12 @@ export function CalculatorForm({ tool }: { tool: ToolPageDefinition }) {
       const result = await calculate(tool.id, values);
       if (requestSequence.current !== sequence) return;
       setState({ status: "success", result, inputs: values });
+
+      const verifiedInputs = Object.fromEntries(
+        Object.entries(values).filter((entry): entry is [string, number] => typeof entry[1] === "number" && Number.isFinite(entry[1])),
+      );
+      setAssistantSession({ toolId: tool.id, toolTitle: tool.title, inputs: verifiedInputs });
+
       void requestAiExplanation(sequence, values, result);
 
       const requests = getScenarioRequests(tool.id, values);
@@ -261,6 +268,12 @@ export function CalculatorForm({ tool }: { tool: ToolPageDefinition }) {
               {tool.id === "profit-margin" && <ScenarioChart scenarios={scenarios} />}
             </div>
           )}
+
+          <Link className="assistant-continue" href="/#assistant">
+            <span className="decision-kicker">AI ile devam et</span>
+            <strong>Bu hesabın üzerinden yeni bir soru sor</strong>
+            <p>Örneğin “Şimdi %10 indirim yaparsam?” diyebilirsiniz. Bağlam yalnız bu tarayıcı oturumunda tutulur.</p>
+          </Link>
 
           {nextTool && (
             <Link className="next-tool" href={`/araclar/${nextTool.slug}`}>
