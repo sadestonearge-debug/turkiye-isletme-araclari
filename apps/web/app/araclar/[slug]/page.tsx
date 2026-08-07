@@ -87,7 +87,7 @@ export default async function ToolPage({ params }: PageProps) {
         </div>
 
         <Suspense fallback={null}>
-          <PrefillBridge allowedKeys={tool.inputs.map((input) => input.key)} />
+          <PrefillBridge fields={tool.inputs} />
         </Suspense>
         <CalculatorForm tool={tool} />
 
