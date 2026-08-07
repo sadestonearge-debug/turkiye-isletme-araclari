@@ -25,12 +25,47 @@ function firstNonNegativeNumber(message: string): number | undefined {
 }
 
 function shortcut(toolId: string, extractedInputs: Record<string, number>): ContextualShortcut {
-  return {
-    toolId,
-    confidence: 0.98,
-    extractedInputs,
-    missingInputs: [],
+  return { toolId, confidence: 0.98, extractedInputs, missingInputs: [] };
+}
+
+function resolveLatestFieldUpdate(
+  message: string,
+  contexts: readonly SafePreviousContext[],
+): ContextualShortcut | null {
+  const latest = contexts.at(-1);
+  if (!latest) return null;
+  const normalized = message.toLocaleLowerCase("tr-TR");
+  const explicitNumber = firstNonNegativeNumber(message);
+  if (explicitNumber === undefined) return null;
+
+  const update = (key: string) => {
+    if (!(key in latest.inputs)) return null;
+    return shortcut(latest.toolId, { ...latest.inputs, [key]: explicitNumber });
   };
+
+  if (normalized.includes("kargo")) return update("shippingCost");
+  if (normalized.includes("reklam")) return update("adCost");
+  if (normalized.includes("komisyonu") || normalized.includes("komisyon oranını") || normalized.includes("komisyon oranini")) {
+    return update("commissionPercent");
+  }
+  if (normalized.includes("satış fiyat") || normalized.includes("satis fiyat")) {
+    return update("salePrice") ?? update("listPrice");
+  }
+  if (normalized.includes("liste fiyat")) return update("listPrice");
+
+  if (normalized.includes("maliyet")) {
+    const costKeyByTool: Record<string, string> = {
+      "profit-margin": "cost",
+      "discount-profit": "cost",
+      "target-margin-sale-price": "totalUnitCost",
+      "marketplace-net-profit": "productCost",
+      "machine-payback": "investmentCost",
+    };
+    const key = costKeyByTool[latest.toolId];
+    if (key) return update(key);
+  }
+
+  return null;
 }
 
 export function resolveContextualShortcut(
@@ -40,6 +75,9 @@ export function resolveContextualShortcut(
   if (contexts.length === 0) return null;
   const normalized = message.toLocaleLowerCase("tr-TR");
   const explicitNumber = firstNonNegativeNumber(message);
+
+  const fieldUpdate = resolveLatestFieldUpdate(message, contexts);
+  if (fieldUpdate) return fieldUpdate;
 
   if (normalized.includes("indirim") || normalized.includes("iskonto")) {
     const extractedInputs: Record<string, number> = {};
