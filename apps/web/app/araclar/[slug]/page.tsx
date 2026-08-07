@@ -1,16 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { CalculatorForm } from "../../../components/calculator-form";
 import { PrefillBridge } from "../../../components/prefill-bridge";
-import { parsePrefillSearchParams } from "../../../lib/prefill";
 import { getFaqs, REVIEWED_AT } from "../../../lib/seo-content";
 import { getToolPageBySlug, toolPages } from "../../../lib/tools";
 
-type PageProps = {
-  params: Promise<{ slug: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-};
+type PageProps = { params: Promise<{ slug: string }> };
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -38,12 +35,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function ToolPage({ params, searchParams }: PageProps) {
+export default async function ToolPage({ params }: PageProps) {
   const { slug } = await params;
   const tool = getToolPageBySlug(slug);
   if (!tool) notFound();
 
-  const safePrefill = parsePrefillSearchParams(tool, await searchParams);
   const related = toolPages.filter((candidate) => candidate.id !== tool.id && candidate.category === tool.category).slice(0, 3);
   const faqs = getFaqs(tool.id);
   const pageUrl = `${siteUrl.replace(/\/$/, "")}/araclar/${tool.slug}`;
@@ -90,7 +86,9 @@ export default async function ToolPage({ params, searchParams }: PageProps) {
           <p className="lede">{tool.description}</p>
         </div>
 
-        <PrefillBridge values={safePrefill} />
+        <Suspense fallback={null}>
+          <PrefillBridge allowedKeys={tool.inputs.map((input) => input.key)} />
+        </Suspense>
         <CalculatorForm tool={tool} />
 
         <section className="content-block" aria-labelledby="calculation-info-heading">
