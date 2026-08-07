@@ -23,7 +23,7 @@
   color: var(--muted);
 }
 .chat-empty strong { display: block; color: var(--foreground); font-size: 18px; }
-.chat-empty p { margin: 6px 0 0; font-size: 14px; }
+.chat-empty p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
 
 .chat-line {
   width: fit-content;
@@ -39,19 +39,25 @@
   font-size: 11px;
   font-weight: 800;
 }
-.chat-line p { margin: 0; font-size: 14px; }
+.chat-line p {
+  margin: 0;
+  font-size: 14px;
+}
 .chat-line-user {
   justify-self: end;
   min-width: 72px;
   background: var(--accent);
   color: #fff;
 }
-.chat-line-user span { color: rgba(255,255,255,.72); }
+.chat-line-user span { color: rgba(255,255,255,.8); }
+.chat-line-user p { color: #fff; }
 .chat-line-assistant {
   justify-self: start;
   min-width: min(280px, 82%);
   background: var(--surface);
+  color: var(--foreground);
 }
+.chat-line-assistant p { color: var(--foreground); }
 
 .chat-composer { max-width: none; margin-top: 12px; }
 
@@ -66,6 +72,7 @@
   border: 1px solid #bbf7d0;
   border-radius: 14px;
   background: var(--positive-bg);
+  color: var(--foreground);
 }
 .chat-calculation-heading span {
   display: block;
@@ -78,6 +85,7 @@
 .chat-calculation-heading strong {
   display: block;
   margin-top: 3px;
+  color: var(--foreground);
   font-size: 18px;
 }
 .chat-used-inputs {
@@ -90,6 +98,7 @@
   padding: 6px 8px;
   border-radius: 9px;
   background: rgba(255,255,255,.72);
+  color: var(--foreground);
   font-size: 12px;
 }
 .chat-result-grid {
@@ -104,7 +113,7 @@
   background: #fff;
 }
 .chat-result-grid span { display: block; color: var(--muted); font-size: 11px; }
-.chat-result-grid strong { display: block; margin-top: 5px; font-size: 20px; }
+.chat-result-grid strong { display: block; margin-top: 5px; color: var(--foreground); font-size: 20px; }
 .chat-calculation-card small {
   display: block;
   margin-top: 11px;
