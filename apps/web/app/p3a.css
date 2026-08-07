@@ -63,6 +63,56 @@
   font-size: 13px;
 }
 
+.conversation-prompt {
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: #eff6ff;
+}
+
+.conversation-prompt span,
+.conversation-prompt b,
+.conversation-prompt small {
+  display: block;
+}
+
+.conversation-prompt span {
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.conversation-prompt b {
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+.conversation-prompt small {
+  margin-top: 5px;
+  color: #4b5563;
+}
+
+.finder-error {
+  margin: 8px 0 0;
+  color: #b45309;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.finder-reset {
+  margin-top: 12px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.finder-reset:hover { color: #111111; }
+
 @media (max-width: 560px) {
   .prefill-list { grid-template-columns: 1fr; }
 }

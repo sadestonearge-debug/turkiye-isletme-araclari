@@ -33,6 +33,11 @@ export async function POST(request: Request) {
   const page = toolPages.find((tool) => tool.id === selection.toolId);
   if (!page) return NextResponse.json({ ok: true, match: null });
 
+  const extractedInputs = sanitizeExtractedInputs(page, selection.extractedInputs);
+  const missingInputs = page.inputs
+    .filter((input) => extractedInputs[input.key] === undefined)
+    .map((input) => ({ key: input.key, label: input.label, suffix: input.suffix ?? null }));
+
   return NextResponse.json({
     ok: true,
     match: {
@@ -40,8 +45,8 @@ export async function POST(request: Request) {
       title: page.title,
       description: page.description,
       confidence: selection.confidence,
-      extractedInputs: sanitizeExtractedInputs(page, selection.extractedInputs),
-      missingInputs: selection.missingInputs.filter((key) => page.inputs.some((input) => input.key === key)),
+      extractedInputs,
+      missingInputs,
     },
   });
 }
